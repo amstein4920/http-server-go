@@ -49,9 +49,14 @@ func handleClient(conn net.Conn) {
 }
 
 func writeResponse(buffer []byte) []byte {
-	if !strings.HasPrefix(string(buffer), "GET / HTTP/1.1") {
-		return []byte("HTTP/1.1 404 Not Found\r\n\r\n")
-	}
-	return []byte("HTTP/1.1 200 OK\r\n\r\n")
+	path := strings.Split(string(buffer), " ")[1]
 
+	if path == "/" {
+		return []byte("HTTP/1.1 200 OK\r\n\r\n")
+	}
+	if strings.HasPrefix(path, "/echo/") {
+		content := path[6:]
+		return []byte(fmt.Sprintf("HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length:%d \r\n\r\n%s", len(content), content))
+	}
+	return []byte("HTTP/1.1 404 Not Found\r\n\r\n")
 }
