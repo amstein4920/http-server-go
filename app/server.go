@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 )
 
 // Ensures gofmt doesn't remove the "net" and "os" imports above (feel free to remove this!)
@@ -44,5 +45,13 @@ func handleClient(conn net.Conn) {
 		return
 	}
 
-	conn.Write([]byte("HTTP/1.1 200 OK\r\n\r\n"))
+	conn.Write(writeResponse(readBuffer))
+}
+
+func writeResponse(buffer []byte) []byte {
+	if !strings.HasPrefix(string(buffer), "GET / HTTP/1.1") {
+		return []byte("HTTP/1.1 404 Not Found\r\n\r\n")
+	}
+	return []byte("HTTP/1.1 200 OK\r\n\r\n")
+
 }
