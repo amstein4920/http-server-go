@@ -11,9 +11,9 @@ import (
 	"strings"
 )
 
-// Ensures gofmt doesn't remove the "net" and "os" imports above (feel free to remove this!)
-var _ = net.Listen
-var _ = os.Exit
+const (
+	notFoundResponse = "HTTP/1.1 404 Not Found\r\n\r\n"
+)
 
 func main() {
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
@@ -53,8 +53,6 @@ func handleClient(conn net.Conn) {
 }
 
 func writeResponse(req *http.Request) []byte {
-	notFoundResponse := "HTTP/1.1 404 Not Found\r\n\r\n"
-
 	path := req.URL.Path
 	dPath := os.Args[slices.Index(os.Args, "--directory")+1]
 
@@ -69,25 +67,49 @@ func writeResponse(req *http.Request) []byte {
 		return []byte(createResponseString("text/plain", len(req.UserAgent()), req.UserAgent()))
 	}
 	if strings.HasPrefix(path, "/files/") {
-		filePath := dPath + path[6:]
-		info, err := os.Stat(filePath)
-		if err != nil {
-			return []byte(notFoundResponse)
+		fmt.Println(req.Method)
+		if req.Method == "GET" {
+			return filesGet(path, dPath)
 		}
-		size := info.Size()
-
-		f, err := os.Open(filePath)
-		if err != nil {
-			return []byte(notFoundResponse)
+		if req.Method == "POST" {
+			return filesPost(req, dPath)
 		}
-		content, err := io.ReadAll(f)
-		if err != nil {
-			return []byte(notFoundResponse)
-		}
-
-		return []byte(createResponseString("application/octet-stream", int(size), string(content)))
 	}
 	return []byte(notFoundResponse)
+}
+
+func filesGet(path string, dPath string) []byte {
+	filePath := dPath + path[6:]
+	info, err := os.Stat(filePath)
+	if err != nil {
+		return []byte(notFoundResponse)
+	}
+	size := info.Size()
+
+	f, err := os.Open(filePath)
+	if err != nil {
+		return []byte(notFoundResponse)
+	}
+	content, err := io.ReadAll(f)
+	if err != nil {
+		return []byte(notFoundResponse)
+	}
+
+	return []byte(createResponseString("application/octet-stream", int(size), string(content)))
+}
+
+func filesPost(req *http.Request, dPath string) []byte {
+	filePath := dPath + req.URL.Path[6:]
+	f, err := os.Create(filePath)
+	if err != nil {
+		return []byte(notFoundResponse)
+	}
+	body, _ := io.ReadAll(req.Body)
+	_, err = f.Write(body)
+	if err != nil {
+		return []byte(notFoundResponse)
+	}
+	return []byte("HTTP/1.1 201 Created\r\n\r\n")
 }
 
 func createResponseString(contentType string, length int, content string) string {
