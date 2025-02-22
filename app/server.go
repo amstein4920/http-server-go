@@ -65,7 +65,7 @@ func writeResponse(req *http.Request) []byte {
 
 	r := ResponseItems{}
 
-	if req.Header.Get("Accept-Encoding") == strings.ToLower("gzip") {
+	if strings.Contains(req.Header.Get("Accept-Encoding"), strings.ToLower("gzip")) {
 		r.contentEncoding = "\r\nContent-Encoding: gzip"
 	}
 
