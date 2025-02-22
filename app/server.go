@@ -2,6 +2,8 @@ package main
 
 import (
 	"bufio"
+	"bytes"
+	"compress/gzip"
 	"fmt"
 	"io"
 	"net"
@@ -74,13 +76,29 @@ func writeResponse(req *http.Request) []byte {
 	}
 	if strings.HasPrefix(path, "/echo/") {
 		r.contentType = "text/plain"
-		r.content = path[6:]
+		if r.contentEncoding != "" {
+			var buffer bytes.Buffer
+			w := gzip.NewWriter(&buffer)
+			w.Write([]byte(path[6:]))
+			w.Close()
+			r.content = buffer.String()
+		} else {
+			r.content = path[6:]
+		}
 		r.contentLength = len(r.content)
 		return []byte(createResponseString(r))
 	}
 	if strings.HasPrefix(path, "/user-agent") {
 		r.contentType = "text/plain"
-		r.content = req.UserAgent()
+		if r.contentEncoding != "" {
+			var buffer bytes.Buffer
+			w := gzip.NewWriter(&buffer)
+			w.Write([]byte(req.UserAgent()))
+			w.Close()
+			r.content = buffer.String()
+		} else {
+			r.content = req.UserAgent()
+		}
 		r.contentLength = len(req.UserAgent())
 		return []byte(createResponseString(r))
 	}
@@ -114,7 +132,15 @@ func filesGet(path string, dPath string, r ResponseItems) []byte {
 	}
 
 	r.contentType = "application/octet-stream"
-	r.content = string(content)
+	if r.contentEncoding != "" {
+		var buffer bytes.Buffer
+		w := gzip.NewWriter(&buffer)
+		w.Write(content)
+		w.Close()
+		r.content = buffer.String()
+	} else {
+		r.content = string(content)
+	}
 	r.contentLength = int(size)
 
 	return []byte(createResponseString(r))
